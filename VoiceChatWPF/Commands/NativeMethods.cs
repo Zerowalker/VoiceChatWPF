@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace VoiceChatWPF.Models
+namespace VoiceChatWPF.Commands
 {
     internal static class NativeMethods
     {

@@ -3,6 +3,7 @@ using NAudio.Wave;
 using System.ComponentModel;
 using System.Windows;
 using VoiceChatWPF.Models;
+using VoiceChatWPF.ViewModels;
 
 namespace VoiceChatWPF.Views
 {

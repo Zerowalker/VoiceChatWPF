@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Windows;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using VoiceChatWPF.ViewModels;
 
 namespace VoiceChatWPF.Models
 {

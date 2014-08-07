@@ -4,15 +4,12 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
-using System.Windows.Forms;
 using System.Windows.Threading;
 using VoiceChatWPF.Annotations;
 using VoiceChatWPF.Commands;
 using VoiceChatWPF.Models;
-using Application = System.Windows.Application;
-using MessageBox = System.Windows.MessageBox;
 
-namespace VoiceChatWPF
+namespace VoiceChatWPF.ViewModels
 {
 
     internal class VoiceChatViewModel : INotifyPropertyChanged
@@ -22,7 +19,7 @@ namespace VoiceChatWPF
         public static int AudioBuffer;
         public static int BufferLength = 5;
         private readonly DispatcherTimer _audioTimer;
-        private readonly ClientEndpoint _clientEndpoint;
+        private readonly ConnectionEndPoint _clientEndpoint;
         private readonly ListeningEndpoint _serverEndpoint;
         private int _volumeSlider;
 
@@ -33,9 +30,9 @@ namespace VoiceChatWPF
                 _serverEndpoint.AskHandler += AskHandler;
                 //_serverEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
 
-                _clientEndpoint = new ClientEndpoint();
+                _clientEndpoint = new ConnectionEndPoint();
                 _clientEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
-                ConnectCommand = new RelayCommand(param => _clientEndpoint.Connect());
+                ConnectCommand = new RelayCommand(param => _serverEndpoint.Connect());
             DisconnectCommand = new RelayCommand(param => _clientEndpoint.CloseConnections());
 
 
@@ -52,10 +49,8 @@ namespace VoiceChatWPF
         {
             MessageBoxResult result = MessageBox.Show(Encoding.ASCII.GetString(e.Username) + " Is trying to Connect",
                 "Accept Connection?", MessageBoxButton.YesNo);
-            if (result == MessageBoxResult.Yes)
-                e.Value = true;
-            else e.Value = false;
-            _serverEndpoint.Accepted = e.Value;
+            e.Value = result == MessageBoxResult.Yes;
+            //_serverEndpoint.Accepted = e.Value;
         }
 
 
@@ -139,7 +134,7 @@ namespace VoiceChatWPF
 
         private void AudioTimerOnTick(object sender, EventArgs eventArgs)
         {
-            if (_serverEndpoint != null) AudioDuration = _serverEndpoint.ChatDuration.Elapsed;
+            //if (_serverEndpoint != null) AudioDuration = _serverEndpoint.ChatDuration.Elapsed;
         }
 
         private void ConnectionHandlingOnRaiseCustomEvent(object sender, CustomEventArgs eventArgs)

@@ -19,7 +19,7 @@ namespace VoiceChatWPF.Models
         public bool GetConnectionStatus { get; set; }
     }
 
-    internal class ClientEndpoint : Endpoint, IDisposable
+    internal class ConnectionEndPoint : Endpoint, IDisposable
     {
         private const int PortNum = 7500;
         public EventHandler<CustomEventArgs> ButtonEvent;
@@ -35,22 +35,6 @@ namespace VoiceChatWPF.Models
         }
 
 
-        /// <summary>
-        ///     Connect to the IP written in the TextBox (If Valid)
-        /// </summary>
-        public void Connect()
-        {
-            IPAddress ip;
-            if (IPAddress.TryParse(VoiceChatViewModel.Adress, out ip))
-            {
-                _playbackEndpoint = new PlaybackEndpoint();
-                Task.Run(() => EstablishConnection(ip));
-            }
-            else
-            {
-                MessageBox.Show("IP Adress is Invalid!");
-            }
-        }
 
         /// <summary>
         ///     Sends PC name to the Server, Server will then ask User if it accepts the Connection.
@@ -59,7 +43,7 @@ namespace VoiceChatWPF.Models
         private void ConfirmConnection()
         {
             //Writes PC Username, and awaits confirmation
-            WriteData(TcpClient, GetPcName()):
+            WriteData(TcpClient, GetPcName());
 
             var readbyte = new byte[1];
             TcpClient.Receive(readbyte);
@@ -77,7 +61,7 @@ namespace VoiceChatWPF.Models
         ///     Try connect with 1 sec Timeout and waits for the Receiver to Accept the connection
         ///     Also starts the Audio Recording and transfer
         /// </summary>
-        private void EstablishConnection(IPAddress ip)
+      internal void EstablishConnection(IPAddress ip)
         {
             try
             {

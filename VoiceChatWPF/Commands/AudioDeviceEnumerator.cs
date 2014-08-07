@@ -1,8 +1,8 @@
-﻿using NAudio.CoreAudioApi;
+﻿using System.Collections.ObjectModel;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using System.Collections.ObjectModel;
 
-namespace VoiceChatWPF
+namespace VoiceChatWPF.Commands
 {
    static class AudioDeviceEnumerator
     {
