@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace VoiceChatWPF.Models
+namespace VoiceChatWPF.Network
 {
     internal class BlockingCollectionHandler : IDisposable
     {
@@ -54,8 +54,6 @@ namespace VoiceChatWPF.Models
             }
             catch (Exception e)
             {
-                if (e is SocketException)
-                    return;
                 MessageBox.Show("Processing BlockingCollection: " + e.Message);
             }
         }

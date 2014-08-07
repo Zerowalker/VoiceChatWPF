@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
@@ -20,20 +21,21 @@ namespace VoiceChatWPF.ViewModels
         public static int BufferLength = 5;
         private readonly DispatcherTimer _audioTimer;
         private readonly ConnectionEndPoint _clientEndpoint;
-        private readonly ListeningEndpoint _serverEndpoint;
+        private readonly ListeningEndpoint _listeningEndpoint;
         private int _volumeSlider;
 
         public VoiceChatViewModel()
         {
+            Model model = new Model();
 
-                _serverEndpoint = new ListeningEndpoint();
-                _serverEndpoint.AskHandler += AskHandler;
-                //_serverEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
+            _listeningEndpoint = model.ListeningEndpoint;
+               
+                _listeningEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
 
-                _clientEndpoint = new ConnectionEndPoint();
+                _clientEndpoint = model.ConnectionEndPoint;
                 _clientEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
-                ConnectCommand = new RelayCommand(param => _serverEndpoint.Connect());
-            DisconnectCommand = new RelayCommand(param => _clientEndpoint.CloseConnections());
+                ConnectCommand = new RelayCommand(param => _listeningEndpoint.Connect());
+                DisconnectCommand = new RelayCommand(param => _listeningEndpoint.DropCall());
 
 
             _volumeSlider = SystemVolumeChanger.GetVolume();
@@ -45,13 +47,7 @@ namespace VoiceChatWPF.ViewModels
             Application.Current.Exit += CurrentOnExit;
         }
 
-        private void AskHandler(object sender, QuestionEvent e)
-        {
-            MessageBoxResult result = MessageBox.Show(Encoding.ASCII.GetString(e.Username) + " Is trying to Connect",
-                "Accept Connection?", MessageBoxButton.YesNo);
-            e.Value = result == MessageBoxResult.Yes;
-            //_serverEndpoint.Accepted = e.Value;
-        }
+
 
 
         //Connect and Disconnect click event
@@ -126,9 +122,10 @@ namespace VoiceChatWPF.ViewModels
 
         private void CurrentOnExit(object sender, ExitEventArgs exitEventArgs)
         {
-            if (_audioTimer != null) _audioTimer.Stop();
-            if (_clientEndpoint != null) _clientEndpoint.Dispose();
-            if (_serverEndpoint != null) _serverEndpoint.Dispose();
+         
+            //if (_audioTimer != null) _audioTimer.Stop();
+            //if (_clientEndpoint != null) _clientEndpoint.Dispose();
+            //if (_listeningEndpoint != null) _listeningEndpoint.Dispose();
         }
 
 

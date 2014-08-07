@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Windows;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using VoiceChatWPF.Network;
 using VoiceChatWPF.ViewModels;
 
 namespace VoiceChatWPF.Models
@@ -87,11 +88,16 @@ namespace VoiceChatWPF.Models
         }
 
         /// <summary>
-        /// Start Recording With SendStream
+        /// Start/Stop (True/False) Recording With SendStream
         /// </summary>
-        public void StartRecording()
+        public void Recording(bool Start)
         {
+            if(Start)
                    SendStream.StartRecording();
+        else
+        SendStream.StopRecording();
+          
+        
         }
         /// <summary>
         ///     Set Parameters to SendStream and starts Playing wasapiOut

@@ -23,10 +23,22 @@ namespace VoiceChatWPF.Models
     {
         private const int PortNum = 7500;
         public EventHandler<CustomEventArgs> ButtonEvent;
-        public Socket TcpClient;
+        private Socket _tcpClient;
+        private Socket TcpServer;
+        private Socket _tcpServerClient;
         private bool _alive;
-        private PlaybackEndpoint _playbackEndpoint;
+        private readonly PlaybackEndpoint _playbackEndpoint;
         private RecordEndPoint _recordEndPoint;
+
+        public ConnectionEndPoint()
+        {
+            TcpServer = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            var ep = new IPEndPoint(IPAddress.Any, PortNum);
+            TcpServer.Bind(ep);
+            TcpServer.Listen(0);
+            _playbackEndpoint = new PlaybackEndpoint();
+            
+        }
 
         public void Dispose()
         {
@@ -34,28 +46,6 @@ namespace VoiceChatWPF.Models
                 CloseConnections();
         }
 
-
-
-        /// <summary>
-        ///     Sends PC name to the Server, Server will then ask User if it accepts the Connection.
-        /// </summary>
-        /// <returns></returns>
-        private void ConfirmConnection()
-        {
-            //Writes PC Username, and awaits confirmation
-            WriteData(TcpClient, GetPcName());
-
-            var readbyte = new byte[1];
-            TcpClient.Receive(readbyte);
-
-
-            //Checks if byte is 0, if so close the connection else accept
-            if (readbyte[0] == 0)
-            {
-                throw new Exception("Connection Refused");
-            }
-            MessageBox.Show("Server Accepted");
-        }
 
         /// <summary>
         ///     Try connect with 1 sec Timeout and waits for the Receiver to Accept the connection
@@ -69,31 +59,31 @@ namespace VoiceChatWPF.Models
                 if (handler != null)
                     handler(this, new CustomEventArgs(false, false));
                         //Enable Disconnect Button and Disable Connect Button
-                TcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                _tcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+                Task.Run((Action) RV2);
 
-                IAsyncResult result = TcpClient.BeginConnect(ip, PortNum, null, null);
-                bool success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(2)); //Try to connect for 2 seconds
+                IAsyncResult result = _tcpClient.BeginConnect(ip, PortNum, null, null);
+                bool success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(10)); //Try to connect for 2 seconds
 
                 if (!success)
                 {
                     throw new Exception("Connection Timeout");
                 }
 
-                TcpClient.EndConnect(result);
+                _tcpClient.EndConnect(result);
 
-                ConfirmConnection();
-                _recordEndPoint = new RecordEndPoint(TcpClient);
-                TcpClient.NoDelay = true;
+                _recordEndPoint = new RecordEndPoint(_tcpClient);
+                _tcpClient.NoDelay = true;
                 if (handler != null)
                     handler(this, new CustomEventArgs(false, true));
                         //Enable Disconnect Button and Disable Connect Button
 
-                BeginRecAndPlayback();
+                BeginRecording();
                 _alive = true;
             }
             catch (Exception e)
             {
-                TcpClient.Close();
+                _tcpClient.Close();
                 MessageBox.Show("BeginConnect: " + e.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 EventHandler<CustomEventArgs> handler = ButtonEvent;
                 if (handler != null)
@@ -103,14 +93,22 @@ namespace VoiceChatWPF.Models
         }
 
 
+        private void RV2()
+        {
+             _tcpServerClient = TcpServer.Accept();
+            _playbackEndpoint.PlaybackLoop(ref _tcpServerClient);
+            
+
+            //TcpServer.DuplicateAndClose(0);
+
+        }
+
         /// <summary>
         /// Start Recording and Begin the PlaybackLoop
         /// </summary>
-        private void BeginRecAndPlayback()
+        private void BeginRecording()
         {
-            _recordEndPoint.StartRecording();
-            Task.Factory.StartNew(param => _playbackEndpoint.PlaybackLoop(TcpClient), TaskCreationOptions.LongRunning)
-                .ContinueWith(param => CloseConnections());
+            _recordEndPoint.Recording(true);
         }
 
         /// <summary>
@@ -121,12 +119,13 @@ namespace VoiceChatWPF.Models
         {
 
                 if (_recordEndPoint != null)
-                {
-                    _recordEndPoint.Dispose();
-                }
-                if (TcpClient != null)
-                    TcpClient.Close();
-                if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
+                    _recordEndPoint.Recording(false); ;
+                
+                if (_tcpClient != null)
+                    _tcpClient.Close();
+                if (_tcpServerClient != null) _tcpServerClient.Close();
+
+            //if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
                 EventHandler<CustomEventArgs> handler = ButtonEvent;
                 if (handler != null)
                     handler(this, new CustomEventArgs(true, false));

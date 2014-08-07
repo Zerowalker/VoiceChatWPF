@@ -52,7 +52,7 @@ namespace VoiceChatWPF.Models
        ///     Loops forever and adds received data to Waveprovider.
        ///     Exits when an Exception occurs (Closing connection)
        /// </summary>
-       public void PlaybackLoop(Socket serverSocket)
+       public void PlaybackLoop(ref Socket serverSocket)
        {
            _waveProvider.ClearBuffer();
            var bufferBytes = new byte[SampleSize];

@@ -1,4 +1,5 @@
-﻿using NAudio.CoreAudioApi;
+﻿using System.Diagnostics;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using System.ComponentModel;
 using System.Windows;
@@ -22,6 +23,7 @@ namespace VoiceChatWPF.Views
   
         private void Window_Closing(object sender, CancelEventArgs e)
         {
+        Process.GetCurrentProcess().Kill();
             //ConnectionHandling.CloseConnections();
         }
     }

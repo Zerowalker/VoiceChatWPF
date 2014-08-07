@@ -1,23 +1,20 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using VoiceChatWPF.Models;
 using VoiceChatWPF.ViewModels;
 
-public class QuestionEvent : EventArgs
+public class ConnectionEvent : EventArgs
 {
-    public QuestionEvent(byte[] username)
+    public ConnectionEvent(IPAddress address)
     {
-        Username = username;
+        GetAddress = address;
+
     }
 
-    public bool Value { get; set; }
-    public byte[] Username { get; set; }
+    public IPAddress GetAddress { get; set; }
 }
 
 namespace VoiceChatWPF
@@ -26,13 +23,15 @@ namespace VoiceChatWPF
     {
         private const int PortNum = 7500;
         private readonly byte[] _byteData;
-        public EventHandler<QuestionEvent> AskHandler;
+        public EventHandler<ConnectionEvent> ConnectHandler;
+        public EventHandler<ConnectionEvent> DisconnectHandler;
         public EventHandler<CustomEventArgs> ButtonEvent;
         private EndPoint _otherPartyEp;
         private IPEndPoint _otherPartyIp; //IP of party we want to make a call.
         private string _receivename;
         private Socket _socketListener;
-
+        private Model _model;
+        private bool Solo;
         public ListeningEndpoint()
         {
             _byteData = new byte[1024];
@@ -45,6 +44,9 @@ namespace VoiceChatWPF
             try
             {
                 //Initialize new Socket
+                if (_socketListener != null)
+                    _socketListener.Close();
+                
                 _socketListener = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
                 //Binds Socket to AnyIP at specified Port
                 EndPoint ep = new IPEndPoint(IPAddress.Any, PortNum);
@@ -115,7 +117,33 @@ namespace VoiceChatWPF
                 MessageBox.Show(ex.Message, "VoiceChat-SendMessage ()", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        /// <summary>
+        /// Fire Connection Event via Model
+        /// </summary>
+        private void FireConnectEvent()
+        {
+            try
+            {
+                var connect = ConnectHandler;
+                if (connect != null)
+                    connect(this, new ConnectionEvent(_otherPartyIp.Address));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("FireConnectEvent: " + e.Message);
+            }
+        }
+        /// <summary>
+        /// Fire Disconnect Event via Model
+        /// </summary>
+        private void FireDisconnectEvent()
+        {
 
+            
+            var connect = DisconnectHandler;
+            if (connect != null)
+                connect(this, new ConnectionEvent(_otherPartyIp.Address));
+        }
         /// <summary>
         ///     Confirms that the connection is to be established
         ///     If user declines it will close and start listening for new connecitons
@@ -125,14 +153,14 @@ namespace VoiceChatWPF
         {
             try
             {
-                EventHandler<CustomEventArgs> handler = ButtonEvent;
+                var handler = ButtonEvent;
 
-                EndPoint receivedFromEP = new IPEndPoint(IPAddress.Any, 0);
+                EndPoint receivedFromEp = new IPEndPoint(IPAddress.Any, 0);
 
 
                 //Get the IP from where we got a message.
-                _socketListener.EndReceiveFrom(ar, ref receivedFromEP);
-
+                _socketListener.EndReceiveFrom(ar, ref receivedFromEp);
+                _otherPartyIp = (IPEndPoint)receivedFromEp;
                 //Convert the bytes received into an object of type Data.
                 var msgReceived = new DataCom(_byteData);
 
@@ -149,20 +177,17 @@ namespace VoiceChatWPF
                         if (MessageBox.Show("Call coming from " + msgReceived.Name + ".\r\n\r\nAccept it?", "Accept"
                             , MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                         {
-                            _receivename = msgReceived.Name;
-                            SendMessage(DataCom.Command.Ok, receivedFromEP);
-                            _otherPartyEp = receivedFromEP;
-                            _otherPartyIp = (IPEndPoint) receivedFromEP;
-                            //ICall();
+                        _receivename = msgReceived.Name;
+                            SendMessage(DataCom.Command.Ok, receivedFromEp);
+                            _otherPartyEp = receivedFromEp;
+                            _otherPartyIp = (IPEndPoint) receivedFromEp;
+                            FireConnectEvent();
+                            Solo = true;
                         }
                         else
                         {
                             //The call is declined. Send a busy response.
-                            SendMessage(DataCom.Command.Busy, receivedFromEP);
-
-
-                            //_tcpClient.Close();
-                            //_tcpClient = new TcpClient();
+                            SendMessage(DataCom.Command.Busy, receivedFromEp);
                         }
                         break;
                     }
@@ -170,11 +195,14 @@ namespace VoiceChatWPF
                         //OK is received in response to an Invite.
                     case DataCom.Command.Ok:
                     {
-                        if (handler != null)
-                            handler(this, new CustomEventArgs(true, false));
-                        //Start a call.
 
-                        //ICall();
+                        if (handler != null)
+                            handler(this, new CustomEventArgs(false, true));
+                        //Start a call.
+                        if(!Solo)
+                        FireConnectEvent();
+
+                     
                         break;
                     }
 
@@ -190,25 +218,38 @@ namespace VoiceChatWPF
                         //Check if the Bye command has indeed come from the user/IP with which we have
                         //a call established. This is used to prevent other users from sending a Bye, which
                         //would otherwise end the call.
-                        if (receivedFromEP.Equals(_otherPartyEp))
+                        if (receivedFromEp.Equals(_otherPartyEp))
                         {
                             //End the call.
-
-                            //UninitializeCall();
+                            FireDisconnectEvent();
                         }
                         break;
                     }
                 }
+                EndPoint ep = new IPEndPoint(IPAddress.Any, PortNum);
                 //Get ready to receive more commands.
-                _socketListener.BeginReceiveFrom(_byteData, 0, _byteData.Length, SocketFlags.None, ref receivedFromEP,
-                    ConfirmConnection, null);
+                _socketListener.BeginReceiveFrom(_byteData, 0, _byteData.Length, SocketFlags.None, ref ep,
+                 ConfirmConnection, null);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ReceiveFrom: " + ex.Message);
+               MessageBox.Show("ReceiveFrom: " + ex.Message);
             }
         }
-
+        public void DropCall()
+        {
+            try
+            {
+                //Send a Bye message to the user to end the call.
+                SendMessage(DataCom.Command.Bye, _otherPartyEp);
+            
+                FireDisconnectEvent();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "VoiceChat-DropCall ()", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
         public void Dispose()
         {
             if (_socketListener != null) _socketListener.Close();
