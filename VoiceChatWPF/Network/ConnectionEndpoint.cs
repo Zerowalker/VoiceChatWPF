@@ -27,7 +27,7 @@ namespace VoiceChatWPF.Models
         private Socket TcpServer;
         private Socket _tcpServerClient;
         private bool _alive;
-        private readonly PlaybackEndpoint _playbackEndpoint;
+        private PlaybackEndpoint _playbackEndpoint;
         private RecordEndPoint _recordEndPoint;
 
         public ConnectionEndPoint()
@@ -36,7 +36,7 @@ namespace VoiceChatWPF.Models
             var ep = new IPEndPoint(IPAddress.Any, PortNum);
             TcpServer.Bind(ep);
             TcpServer.Listen(0);
-            _playbackEndpoint = new PlaybackEndpoint();
+
             
         }
 
@@ -44,6 +44,10 @@ namespace VoiceChatWPF.Models
         {
             if (_alive)
                 CloseConnections();
+            if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
+            if (_recordEndPoint != null) _recordEndPoint.Dispose();
+            if (TcpServer == null) return;
+            TcpServer.Close();
         }
 
 
@@ -55,11 +59,14 @@ namespace VoiceChatWPF.Models
         {
             try
             {
+                _alive = true;
+                _playbackEndpoint = new PlaybackEndpoint();
+                _tcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
                 EventHandler<CustomEventArgs> handler = ButtonEvent;
                 if (handler != null)
                     handler(this, new CustomEventArgs(false, false));
                         //Enable Disconnect Button and Disable Connect Button
-                _tcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+               
                 Task.Run((Action) RV2);
 
                 IAsyncResult result = _tcpClient.BeginConnect(ip, PortNum, null, null);
@@ -96,11 +103,8 @@ namespace VoiceChatWPF.Models
         private void RV2()
         {
              _tcpServerClient = TcpServer.Accept();
+            _tcpServerClient.NoDelay = true;
             _playbackEndpoint.PlaybackLoop(ref _tcpServerClient);
-            
-
-            //TcpServer.DuplicateAndClose(0);
-
         }
 
         /// <summary>
@@ -117,22 +121,29 @@ namespace VoiceChatWPF.Models
         /// </summary>
         public void CloseConnections()
         {
+            if (!_alive) return;
 
-                if (_recordEndPoint != null)
-                    _recordEndPoint.Recording(false); ;
+            _alive = false;
+            if (_recordEndPoint != null)
+                _recordEndPoint.Recording(false);
                 
-                if (_tcpClient != null)
-                    _tcpClient.Close();
-                if (_tcpServerClient != null) _tcpServerClient.Close();
+
+
+            if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
+
+            if (_tcpClient != null)
+            {
+                _tcpClient.Shutdown(SocketShutdown.Both);
+                _tcpClient.Close();
+                //_tcpClient = null;
+            }
+            if (_tcpServerClient != null) _tcpServerClient.Close();
 
             //if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
-                EventHandler<CustomEventArgs> handler = ButtonEvent;
-                if (handler != null)
-                    handler(this, new CustomEventArgs(true, false));
-                        //Disable Disconnect Button and Enable Connect Button
-
-                _alive = false;
-
+            EventHandler<CustomEventArgs> handler = ButtonEvent;
+            if (handler != null)
+                handler(this, new CustomEventArgs(true, false));
+            //Disable Disconnect Button and Enable Connect Button
         }
     }
 }

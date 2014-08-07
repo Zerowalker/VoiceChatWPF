@@ -32,18 +32,9 @@ namespace VoiceChatWPF.Models
         {
             SendStream.DataAvailable -= SendStream_DataAvailable;
             SendStream.Dispose();
-            if (_blockhand != null)
-            {
-                try
-                {
-                    _blockhand.BufferCollection.Add(new byte[0]);
-                    _blockhand.Dispose();
-                }
-                catch (Exception)
-                {
-                }
-            }
-
+            if (_blockhand == null) return;
+            _blockhand.BufferCollection.Add(new byte[0]);
+            _blockhand.Dispose();
         }
 
         /// <summary>

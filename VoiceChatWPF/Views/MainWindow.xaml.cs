@@ -23,7 +23,7 @@ namespace VoiceChatWPF.Views
   
         private void Window_Closing(object sender, CancelEventArgs e)
         {
-        Process.GetCurrentProcess().Kill();
+        //Process.GetCurrentProcess().Kill();
             //ConnectionHandling.CloseConnections();
         }
     }

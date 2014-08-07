@@ -40,7 +40,7 @@ namespace VoiceChatWPF.Network
                     byte[] bufBytes;
                     if (BufferCollection.TryTake(out bufBytes, Timeout.Infinite))
                     {
-                        if (bufBytes.Length == 0)
+                        if (bufBytes.Length == 0 || !_tcpClient.Connected)
                             break;
                         _tcpClient.Send(bufBytes);
                         //waveWriterYour.Write(bufBytes, 0, bufBytes.Length);

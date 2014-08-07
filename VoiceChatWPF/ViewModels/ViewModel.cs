@@ -23,10 +23,10 @@ namespace VoiceChatWPF.ViewModels
         private readonly ConnectionEndPoint _clientEndpoint;
         private readonly ListeningEndpoint _listeningEndpoint;
         private int _volumeSlider;
-
+        private readonly Model model;
         public VoiceChatViewModel()
         {
-            Model model = new Model();
+            model = new Model();
 
             _listeningEndpoint = model.ListeningEndpoint;
                
@@ -34,8 +34,9 @@ namespace VoiceChatWPF.ViewModels
 
                 _clientEndpoint = model.ConnectionEndPoint;
                 _clientEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
+
                 ConnectCommand = new RelayCommand(param => _listeningEndpoint.Connect());
-                DisconnectCommand = new RelayCommand(param => _listeningEndpoint.DropCall());
+                DisconnectCommand = new RelayCommand(param => _listeningEndpoint.DropCall()) { CanExecute = false };
 
 
             _volumeSlider = SystemVolumeChanger.GetVolume();
@@ -122,10 +123,8 @@ namespace VoiceChatWPF.ViewModels
 
         private void CurrentOnExit(object sender, ExitEventArgs exitEventArgs)
         {
-         
-            //if (_audioTimer != null) _audioTimer.Stop();
-            //if (_clientEndpoint != null) _clientEndpoint.Dispose();
-            //if (_listeningEndpoint != null) _listeningEndpoint.Dispose();
+            model.Dispose();
+     
         }
 
 

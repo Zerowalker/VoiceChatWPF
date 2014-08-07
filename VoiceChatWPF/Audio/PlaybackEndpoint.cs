@@ -17,6 +17,7 @@ namespace VoiceChatWPF.Models
        {
            InitilizeAudio();
        }
+
         /// <summary>
         ///     Set Parameters to SendStream and starts Playing wasapiOut
         /// </summary>
@@ -56,7 +57,7 @@ namespace VoiceChatWPF.Models
        {
            _waveProvider.ClearBuffer();
            var bufferBytes = new byte[SampleSize];
-           while (true)
+           while (serverSocket.Connected)
            {
                serverSocket.Receive(bufferBytes);
                _waveProvider.AddSamples(bufferBytes,0,SampleSize);

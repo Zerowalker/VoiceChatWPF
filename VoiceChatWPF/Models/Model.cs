@@ -1,7 +1,9 @@
 ﻿
+using System;
+
 namespace VoiceChatWPF.Models
 {
-    class Model
+    class Model : IDisposable
     {
         public ConnectionEndPoint ConnectionEndPoint;
         public ListeningEndpoint ListeningEndpoint;
@@ -24,5 +26,10 @@ namespace VoiceChatWPF.Models
             ConnectionEndPoint.EstablishConnection(connectionEvent.GetAddress);
         }
 
+        public void Dispose()
+        {
+            ConnectionEndPoint.Dispose();
+            ListeningEndpoint.Dispose();
+        }
     }
 }
