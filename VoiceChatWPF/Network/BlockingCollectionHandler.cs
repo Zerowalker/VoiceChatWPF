@@ -9,15 +9,14 @@ namespace VoiceChatWPF.Network
 {
     internal class BlockingCollectionHandler : IDisposable
     {
-        private readonly Socket _tcpClient;
+        private readonly Socket _socketClient;
         public BlockingCollection<byte[]> BufferCollection;
         private Task _dataCollectTask;
 
-        public BlockingCollectionHandler(Socket tcpClient)
+        public BlockingCollectionHandler(Socket socketClient)
         {
             BufferCollection = new BlockingCollection<byte[]>();
-            _tcpClient = tcpClient;
-            //_dataCollectTask = TaskFactory( CancellationToken.None,TaskCreationOptions.LongRunning,TaskContinuationOptions.None, TaskScheduler.Default);
+            _socketClient = socketClient;
         }
 
         public void Dispose()
@@ -40,9 +39,9 @@ namespace VoiceChatWPF.Network
                     byte[] bufBytes;
                     if (BufferCollection.TryTake(out bufBytes, Timeout.Infinite))
                     {
-                        if (bufBytes.Length == 0 || !_tcpClient.Connected)
+                        if (bufBytes.Length == 0 || !_socketClient.Connected)
                             break;
-                        _tcpClient.Send(bufBytes);
+                        _socketClient.Send(bufBytes);
                         //waveWriterYour.Write(bufBytes, 0, bufBytes.Length);
                         //waveWriterYour.Flush();
                     }
@@ -54,7 +53,6 @@ namespace VoiceChatWPF.Network
             }
             catch (Exception e)
             {
-                MessageBox.Show("Processing BlockingCollection: " + e.Message);
             }
         }
 

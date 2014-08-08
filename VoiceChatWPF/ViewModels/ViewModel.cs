@@ -42,9 +42,9 @@ namespace VoiceChatWPF.ViewModels
             _volumeSlider = SystemVolumeChanger.GetVolume();
             AudioDevicesFromCb = AudioDeviceEnumerator.GetAudioDevices();
             
-            _audioTimer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(10)};
-            _audioTimer.Tick += AudioTimerOnTick;
-            _audioTimer.Start();
+            //_audioTimer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(10)};
+            //_audioTimer.Tick += AudioTimerOnTick;
+            //_audioTimer.Start();
             Application.Current.Exit += CurrentOnExit;
         }
 

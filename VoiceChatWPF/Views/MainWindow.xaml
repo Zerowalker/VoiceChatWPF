@@ -9,12 +9,12 @@
         <ComboBox x:Name="AudioDevices" SelectedIndex="{Binding Path=AudioIndexFromCb, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding AudioDevicesFromCb}" HorizontalAlignment="Left" Margin="159,32,0,0" VerticalAlignment="Top" Width="192" IsSynchronizedWithCurrentItem="True"/>
         <Button Command="{Binding AsioSettings}" Content="Asio Settings" HorizontalAlignment="Left" Margin="205,59,0,0" VerticalAlignment="Top" Width="83" Height="25"/>
         <Slider x:Name="BufferSlider" Value="{Binding BufferLengthFromSlider}" HorizontalAlignment="Left" IsSnapToTickEnabled="True" Margin="236,150,0,0" VerticalAlignment="Top" Width="115" Height="24" SmallChange="5" TickFrequency="5" Maximum="100" LargeChange="5"/>
-        <Label x:Name="BufferSliderStatus" Content="{Binding Value, ElementName=BufferSlider}" HorizontalContentAlignment="Center" HorizontalAlignment="Left" Margin="236,124,0,0" VerticalAlignment="Top" Width="115"/>
+        <Label x:Name="BufferSliderStatus" Content="{Binding Value, ElementName=BufferSlider}" ContentStringFormat="{}Buffer: {0:N0}"  HorizontalContentAlignment="Center" HorizontalAlignment="Left" Margin="236,124,0,0" VerticalAlignment="Top" Width="115"/>
         <ProgressBar x:Name="BufferSize" Value="{Binding Path=AudioBufferToProgressBar ,Mode=OneWay}" HorizontalAlignment="Left" Height="143" Margin="356,36,0,0" VerticalAlignment="Top" Width="44" Orientation="Vertical"/>
         <Label x:Name="BufferSizeStatus" Content="{Binding Value, ElementName=BufferSize}" HorizontalContentAlignment="Center" HorizontalAlignment="Left" Margin="356,106,0,0"  VerticalAlignment="Top" Width="44" Height="26" RenderTransformOrigin="2.405,1.038"/>
         <Label Content="IP Adress" HorizontalAlignment="Left" Margin="11,5,0,0" VerticalAlignment="Top"/>
         <Slider x:Name="VolumeSlider" Value="{Binding VolumeSliderControl}" IsSnapToTickEnabled="True" HorizontalAlignment="Left" Margin="11,150,0,0" VerticalAlignment="Top" Width="190" Maximum="100" SmallChange="1"/>
-        <Label x:Name="VolumeSliderStatus" HorizontalContentAlignment="Center" Content="{Binding Value, ElementName=VolumeSlider}" ContentStringFormat="{}{0:N0}%" HorizontalAlignment="Left" Margin="10,119,0,0" VerticalAlignment="Top" Width="190"/>
+        <Label x:Name="VolumeSliderStatus" HorizontalContentAlignment="Center" Content="{Binding Value, ElementName=VolumeSlider}" ContentStringFormat="{}Volume: {0:N0}%" HorizontalAlignment="Left" Margin="10,119,0,0" VerticalAlignment="Top" Width="190"/>
         <Label Content="{Binding AudioDuration}" HorizontalAlignment="Left" Margin="11,88,0,0" VerticalAlignment="Top" Width="143"/>
 
     </Grid>

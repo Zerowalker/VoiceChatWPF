@@ -1,31 +1,37 @@
-﻿using System.Net.Sockets;
-using System.Windows.Threading;
+﻿using System;
+using System.Net.Sockets;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using System;
-using System.Windows;
 
 namespace VoiceChatWPF.Models
 {
     public sealed class PlaybackEndpoint : IDisposable
     {
-        private readonly BufferedWaveProvider _waveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 2));
-        private WasapiOut _wasapiOut;
-        private AsioOut _asioOut;
         private const int SampleSize = 960; //5ms 16bit 48khz Stereo
-       public PlaybackEndpoint()
-       {
-           InitilizeAudio();
-       }
+        private readonly BufferedWaveProvider _waveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 2));
+        private AsioOut _asioOut;
+        private WasapiOut _wasapiOut;
+
+        public PlaybackEndpoint()
+        {
+            InitilizeAudio();
+        }
+
+        public void Dispose()
+        {
+            if (_wasapiOut != null) _wasapiOut.Dispose();
+            if (_asioOut != null) _asioOut.Dispose();
+        }
 
         /// <summary>
         ///     Set Parameters to SendStream and starts Playing wasapiOut
         /// </summary>
-       private void InitilizeAudio()
+        private void InitilizeAudio()
         {
             try
             {
                 _waveProvider.DiscardOnBufferOverflow = true;
+                _waveProvider.BufferDuration = new TimeSpan(0, 0, 0, 0, 120);
                 //if (AsioOut.isSupported())
                 //{
                 //    if (_asioOut != null) _asioOut.Dispose();
@@ -36,7 +42,7 @@ namespace VoiceChatWPF.Models
                 //}
                 //else
                 {
-
+                    if (_wasapiOut != null) _wasapiOut.Dispose();
                     _wasapiOut = new WasapiOut(AudioClientShareMode.Shared, true, 10);
                     _wasapiOut.Init(_waveProvider);
                     _wasapiOut.Play();
@@ -44,30 +50,26 @@ namespace VoiceChatWPF.Models
             }
             catch (Exception e)
             {
-                MessageBox.Show(e.Message, "InitilizeAudio", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-       /// <summary>
-       ///     PlaybackLoop
-       ///     Loops forever and adds received data to Waveprovider.
-       ///     Exits when an Exception occurs (Closing connection)
-       /// </summary>
-       public void PlaybackLoop(ref Socket serverSocket)
-       {
-           _waveProvider.ClearBuffer();
-           var bufferBytes = new byte[SampleSize];
-           while (serverSocket.Connected)
-           {
-               serverSocket.Receive(bufferBytes);
-               _waveProvider.AddSamples(bufferBytes,0,SampleSize);
-           }
-       }
-
-        public void Dispose()
+        /// <summary>
+        ///     PlaybackLoop
+        ///     Loops forever and adds received data to Waveprovider.
+        ///     Exits when an Exception occurs (Closing connection)
+        /// </summary>
+        public void PlaybackLoop(Socket serverSocket)
         {
-            if (_wasapiOut != null) _wasapiOut.Dispose();
-            if (_asioOut != null) _asioOut.Dispose();
+            serverSocket.NoDelay = true;
+            _waveProvider.ClearBuffer();
+            var bufferBytes = new byte[SampleSize];
+            //Reads from Server as long as it doesn't return 0
+            for (int i = 1; i != 0; i = serverSocket.Receive(bufferBytes))
+            {
+                _waveProvider.AddSamples(bufferBytes, 0, SampleSize);
+            }
+            serverSocket.Shutdown(SocketShutdown.Both);
+            serverSocket.Close();
         }
     }
 }
