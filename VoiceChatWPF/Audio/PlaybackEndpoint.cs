@@ -3,11 +3,12 @@ using System.Net.Sockets;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
-namespace VoiceChatWPF.Models
+namespace VoiceChatWPF.Audio
 {
     public sealed class PlaybackEndpoint : IDisposable
     {
         private const int SampleSize = 960; //5ms 16bit 48khz Stereo
+        public static int BufferedDuration;
         private readonly BufferedWaveProvider _waveProvider = new BufferedWaveProvider(new WaveFormat(48000, 16, 2));
         private AsioOut _asioOut;
         private WasapiOut _wasapiOut;
@@ -24,34 +25,48 @@ namespace VoiceChatWPF.Models
         }
 
         /// <summary>
-        ///     Set Parameters to SendStream and starts Playing wasapiOut
+        ///     Initialize ASIO and starts playing
+        ///     If ASIO throws exception, use Wasapi
         /// </summary>
-        private void InitilizeAudio()
+        private void InitializeAsio()
         {
             try
             {
-                _waveProvider.DiscardOnBufferOverflow = true;
-                _waveProvider.BufferDuration = new TimeSpan(0, 0, 0, 0, 120);
-                //if (AsioOut.isSupported())
-                //{
-                //    if (_asioOut != null) _asioOut.Dispose();
-                //    _asioOut = new AsioOut(1);
-                //    _asioOut.Init(_waveProvider);
-                //    _asioOut.Play();
-
-                //}
-                //else
-                {
-                    if (_wasapiOut != null) _wasapiOut.Dispose();
-                    _wasapiOut = new WasapiOut(AudioClientShareMode.Shared, true, 10);
-                    _wasapiOut.Init(_waveProvider);
-                    _wasapiOut.Play();
-                }
+                if (_asioOut != null) _asioOut.Dispose();
+                _asioOut = new AsioOut(1);
+                _asioOut.Init(_waveProvider);
+                _asioOut.Play();
             }
             catch (Exception e)
             {
+                InitializeWasapi();
             }
         }
+
+        /// <summary>
+        ///     Initialize Wasapi and starts playing
+        /// </summary>
+        private void InitializeWasapi()
+        {
+            if (_wasapiOut != null) _wasapiOut.Dispose();
+            _wasapiOut = new WasapiOut(AudioClientShareMode.Shared, true, 500);
+            _wasapiOut.Init(_waveProvider);
+            _wasapiOut.Play();
+        }
+
+        /// <summary>
+        ///     Initialize either ASIO or Wasapi
+        /// </summary>
+        private void InitilizeAudio()
+        {
+            _waveProvider.DiscardOnBufferOverflow = true;
+            _waveProvider.BufferDuration = new TimeSpan(0, 0, 0, 0, 110);
+            //if (AsioOut.isSupported())
+                //InitializeAsio();
+            //else
+                InitializeWasapi();
+        }
+
 
         /// <summary>
         ///     PlaybackLoop
@@ -62,12 +77,18 @@ namespace VoiceChatWPF.Models
         {
             serverSocket.NoDelay = true;
             _waveProvider.ClearBuffer();
-            var bufferBytes = new byte[SampleSize];
+            var bufferBytes = new byte[192000];
+            int size;
             //Reads from Server as long as it doesn't return 0
-            for (int i = 1; i != 0; i = serverSocket.Receive(bufferBytes))
+            while ((size = serverSocket.Receive(bufferBytes)) != 0)
             {
-                _waveProvider.AddSamples(bufferBytes, 0, SampleSize);
+                _waveProvider.AddSamples(bufferBytes, 0, size);
+
+                BufferedDuration = _waveProvider.BufferedDuration.Milliseconds;
+                if (BufferedDuration == _waveProvider.BufferDuration.Milliseconds)
+                    _waveProvider.ClearBuffer();
             }
+
             serverSocket.Shutdown(SocketShutdown.Both);
             serverSocket.Close();
         }

@@ -36,6 +36,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject>VoiceChatWPF.App</StartupObject>
@@ -69,6 +71,7 @@
     </ApplicationDefinition>
     <Compile Include="Commands\AudioDeviceEnumerator.cs" />
     <Compile Include="Commands\Commands.cs" />
+    <Compile Include="Events\Event.cs" />
     <Compile Include="Network\BlockingCollectionHandler.cs" />
     <Compile Include="Network\ConnectionEndpoint.cs" />
     <Compile Include="Models\Data.cs" />
@@ -80,6 +83,8 @@
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Network\ListeningEndpoint.cs" />
     <Compile Include="ViewModels\ViewModel.cs" />
+    <Compile Include="WaveMod\BufferedWaveProvider.cs" />
+    <Compile Include="WaveMod\CircularBuffer.cs" />
     <Page Include="Views\MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

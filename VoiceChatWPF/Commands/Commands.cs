@@ -6,16 +6,16 @@ namespace VoiceChatWPF.Commands
 {
     public class RelayCommand : ICommand
     {
-        private readonly Action<object> action;
-        private readonly SynchronizationContext syncContext;
+        private readonly Action<object> _action;
+        private readonly SynchronizationContext _syncContext;
 
         private bool _canExecute;
 
         public RelayCommand(Action<object> action)
         {
             _canExecute = true;
-            this.action = action;
-            syncContext = SynchronizationContext.Current;
+            this._action = action;
+            _syncContext = SynchronizationContext.Current;
         }
 
         public bool CanExecute
@@ -37,19 +37,17 @@ namespace VoiceChatWPF.Commands
 
         void ICommand.Execute(object parameter)
         {
-            action(parameter);
+            _action(parameter);
         }
 
         private void RaiseCanExecuteChanged()
         {
             EventHandler handler = CanExecuteChanged;
-            if (handler != null)
-            {
-                if (syncContext != null)
-                    syncContext.Post(_ => handler(this, EventArgs.Empty), null);
-                else
-                    handler(this, EventArgs.Empty);
-            }
+            if (handler == null) return;
+            if (_syncContext != null)
+                _syncContext.Post(_ => handler(this, EventArgs.Empty), null);
+            else
+                handler(this, EventArgs.Empty);
         }
     }
 }

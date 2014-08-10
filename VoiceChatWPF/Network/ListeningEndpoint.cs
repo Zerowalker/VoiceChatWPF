@@ -3,29 +3,20 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Windows;
+using VoiceChatWPF.Events;
 using VoiceChatWPF.Models;
 using VoiceChatWPF.ViewModels;
 
-public class ConnectionEvent : EventArgs
-{
-    public ConnectionEvent(IPAddress address)
-    {
-        GetAddress = address;
-    }
-
-    public IPAddress GetAddress { get; set; }
-}
-
-namespace VoiceChatWPF
+namespace VoiceChatWPF.Network
 {
     internal class ListeningEndpoint : Endpoint, IDisposable
     {
         private const int PortNum = 7600;
         private readonly byte[] _byteData;
-        public EventHandler<CustomEventArgs> ButtonEvent;
+        public EventHandler<ButtonHandlerEvent> ButtonEvent;
         public EventHandler<ConnectionEvent> ConnectHandler;
         public EventHandler<ConnectionEvent> DisconnectHandler;
-        private bool _Disposing;
+        private bool _disposing;
         private EndPoint _otherPartyEp;
         private IPEndPoint _otherPartyIp; //IP of party we want to make a call.
         private Socket _socketListener;
@@ -40,7 +31,7 @@ namespace VoiceChatWPF
         public void Dispose()
         {
             if (_socketListener == null) return;
-            _Disposing = true;
+            _disposing = true;
             if (_otherPartyEp != null) SendMessage(DataCom.Command.Bye, _otherPartyEp);
             _socketListener.Shutdown(SocketShutdown.Both);
             _socketListener.Close();     
@@ -108,7 +99,7 @@ namespace VoiceChatWPF
                 byte[] message = msgToSend.ToByte();
 
                 //Send DropCall signal before disposing
-                if (_Disposing)
+                if (_disposing)
                 {
                     _socketListener.SendTo(message, sendToEP);
                     return;
@@ -144,7 +135,7 @@ namespace VoiceChatWPF
         /// </summary>
         private void AllowDisconnect()
         {
-            if (ButtonEvent != null) ButtonEvent(this, new CustomEventArgs(false, true));
+            if (ButtonEvent != null) ButtonEvent(this, new ButtonHandlerEvent(false, true));
         }
 
         /// <summary>
@@ -152,7 +143,7 @@ namespace VoiceChatWPF
         /// </summary>
         private void AllowConnect()
         {
-            if (ButtonEvent != null) ButtonEvent(this, new CustomEventArgs(true, false));
+            if (ButtonEvent != null) ButtonEvent(this, new ButtonHandlerEvent(true, false));
         }
 
         /// <summary>
@@ -162,18 +153,15 @@ namespace VoiceChatWPF
         /// <returns></returns>
         private void BeginReceive(IAsyncResult ar)
         {
+            try
+            {
             EndPoint receivedFromEp = new IPEndPoint(IPAddress.Any, 0);
 
             //Get the IP from where we got a message.
             //Exits if Socket is closed as a safe measure when disposing
-            try
-            {
+        
                 _socketListener.EndReceiveFrom(ar, ref receivedFromEp);
-            }
-            catch
-            {
-                return;
-            }
+  
 
 
             _otherPartyIp = (IPEndPoint) receivedFromEp;
@@ -244,6 +232,10 @@ namespace VoiceChatWPF
             //Get ready to receive more commands.
             _socketListener.BeginReceiveFrom(_byteData, 0, _byteData.Length, SocketFlags.None, ref ep,
                 BeginReceive, null);
+            }
+            catch
+            {
+            }
         }
 
         public void DropCall()

@@ -1,55 +1,58 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Windows;
 using System.Windows.Threading;
 using VoiceChatWPF.Annotations;
+using VoiceChatWPF.Audio;
 using VoiceChatWPF.Commands;
+using VoiceChatWPF.Events;
 using VoiceChatWPF.Models;
+using VoiceChatWPF.Network;
 
 namespace VoiceChatWPF.ViewModels
 {
 
-    internal class VoiceChatViewModel : INotifyPropertyChanged
+    internal class VoiceChatViewModel : INotifyPropertyChanged, IDisposable
     {
-        public static int AudioIndex;
+        private int audioIndex;
         public static string Adress = "127.0.0.1";
-        public static int AudioBuffer;
-        public static int BufferLength = 5;
-        private readonly DispatcherTimer _audioTimer;
+         private int bufferLength = 10;
         private readonly ConnectionEndPoint _clientEndpoint;
         private readonly ListeningEndpoint _listeningEndpoint;
         private int _volumeSlider;
-        private readonly Model model;
+        private readonly Model _model;
         public VoiceChatViewModel()
         {
-            model = new Model();
+            _model = new Model();
+            
+            _listeningEndpoint = _model.ListeningEndpoint;
 
-            _listeningEndpoint = model.ListeningEndpoint;
-               
-                _listeningEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
+            _listeningEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
 
-                _clientEndpoint = model.ConnectionEndPoint;
-                _clientEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
+            _clientEndpoint = _model.ConnectionEndPoint;
+            _clientEndpoint.ButtonEvent += ConnectionHandlingOnRaiseCustomEvent;
 
-                ConnectCommand = new RelayCommand(param => _listeningEndpoint.Connect());
-                DisconnectCommand = new RelayCommand(param => _listeningEndpoint.DropCall()) { CanExecute = false };
+            ConnectCommand = new RelayCommand(param => _listeningEndpoint.Connect());
+            DisconnectCommand = new RelayCommand(param => _listeningEndpoint.DropCall()) {CanExecute = false};
 
+           
 
             _volumeSlider = SystemVolumeChanger.GetVolume();
             AudioDevicesFromCb = AudioDeviceEnumerator.GetAudioDevices();
-            
-            //_audioTimer = new DispatcherTimer {Interval = TimeSpan.FromMilliseconds(10)};
-            //_audioTimer.Tick += AudioTimerOnTick;
-            //_audioTimer.Start();
-            Application.Current.Exit += CurrentOnExit;
+
+            _model.AudioTimer.Tick += AudioTimerOnTick;
         }
 
 
-
+        private void AudioTimerOnTick(object sender, EventArgs eventArgs)
+        {
+            if (RecordEndPoint._audioSync != null &&
+                RecordEndPoint._audioSync.Elapsed != AudioDuration) 
+                AudioDuration = RecordEndPoint._audioSync.Elapsed;
+            if (PlaybackEndpoint.BufferedDuration != CurrentBufferedAudio) 
+            CurrentBufferedAudio = PlaybackEndpoint.BufferedDuration;
+        }
 
         //Connect and Disconnect click event
         public RelayCommand ConnectCommand { get; private set; }
@@ -58,13 +61,17 @@ namespace VoiceChatWPF.ViewModels
 
         public TimeSpan AudioDuration { get; private set; }
         //Binds SelectedIndex from ComboBox to AudioIndex
-        public int AudioIndexFromCb
+        public int AudioIndex
         {
-            get { return AudioIndex; }
+            get { return audioIndex; }
             set
             {
-                AudioIndex = value;
-                OnPropertyChanged();
+                int device = value;
+                if (AudioDevicesFromCb.Count-1 == value)
+                    device = -1;
+                _clientEndpoint.DeviceHandler(null, new AudioDeviceEvent(device, bufferLength));
+                audioIndex = value;
+                //OnPropertyChanged();
             }
         }
 
@@ -83,25 +90,19 @@ namespace VoiceChatWPF.ViewModels
         //Binds AudioDevice List to ComboBox
         public ObservableCollection<string> AudioDevicesFromCb { get; private set; }
 
-        //Binds AudioBuffer to ProgressBar (Buffered Duration in WaveProvider)
-        public int AudioBufferToProgressBar
-        {
-            get { return AudioBuffer; }
-            set
-            {
-                AudioBuffer = value;
-                OnPropertyChanged();
-            }
-        }
+        //
+        public int CurrentBufferedAudio
+        { get; set; }
 
 
         //Binds BufferLength to SendStream Bufferlength
-        public int BufferLengthFromSlider
+        public int BufferLength
         {
-            get { return BufferLength; }
+            get { return bufferLength; }
             set
             {
-                BufferLength = value;
+                _clientEndpoint.DeviceHandler(null, new AudioDeviceEvent(AudioIndex, value));
+                bufferLength = value;
                 OnPropertyChanged();
             }
         }
@@ -114,26 +115,13 @@ namespace VoiceChatWPF.ViewModels
             {
                 SystemVolumeChanger.SetVolume(value);
                 _volumeSlider = value;
-
                 OnPropertyChanged();
             }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private void CurrentOnExit(object sender, ExitEventArgs exitEventArgs)
-        {
-            model.Dispose();
-     
-        }
-
-
-        private void AudioTimerOnTick(object sender, EventArgs eventArgs)
-        {
-            //if (_serverEndpoint != null) AudioDuration = _serverEndpoint.ChatDuration.Elapsed;
-        }
-
-        private void ConnectionHandlingOnRaiseCustomEvent(object sender, CustomEventArgs eventArgs)
+        private void ConnectionHandlingOnRaiseCustomEvent(object sender, ButtonHandlerEvent eventArgs)
         {
             if (DisconnectCommand != null) DisconnectCommand.CanExecute = eventArgs.GetDisconnectionStatus;
             if (ConnectCommand != null) ConnectCommand.CanExecute = eventArgs.GetConnectionStatus;
@@ -144,6 +132,11 @@ namespace VoiceChatWPF.ViewModels
         {
             PropertyChangedEventHandler handler = PropertyChanged;
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void Dispose()
+        {
+            _model.Dispose();
         }
     }
 }

@@ -1,47 +1,63 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Threading;
+using VoiceChatWPF.Audio;
+using VoiceChatWPF.Events;
+using VoiceChatWPF.Models;
 
-namespace VoiceChatWPF.Models
+namespace VoiceChatWPF.Network
 {
-    public class CustomEventArgs : EventArgs
-    {
-        public CustomEventArgs(bool s, bool s2)
-        {
-            GetConnectionStatus = s;
-            GetDisconnectionStatus = s2;
-        }
 
-        public bool GetDisconnectionStatus { get; set; }
-        public bool GetConnectionStatus { get; set; }
-    }
 
     internal class ConnectionEndPoint : Endpoint, IDisposable
     {
         private const int PortNum = 7500;
         private readonly Socket _socketServer;
-        public EventHandler<CustomEventArgs> ButtonEvent;
+        public EventHandler<ButtonHandlerEvent> ButtonEvent;
+        public  EventHandler<AudioDeviceEvent> DeviceHandler; 
         private bool _alive;
         private PlaybackEndpoint _playbackEndpoint;
-        private RecordEndPoint _recordEndPoint;
+        public RecordEndPoint _recordEndPoint;
         private Socket _socketClient;
-
+        private int _device;
+        private int _bufferLength = 10;
+        public DispatcherTimer AudioTimer;
         public ConnectionEndPoint()
         {
+            DeviceHandler += OnDeviceChange;
             _socketServer = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             var ep = new IPEndPoint(IPAddress.Any, PortNum);
             _socketServer.Bind(ep);
             _socketServer.Listen(0);
+
+            AudioTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(10),
+            };
         }
+
+        /// <summary>
+        /// If Device or Buffer length is changed, reset Recording to re-initialize
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="audioDeviceEvent"></param>
+        private void OnDeviceChange(object sender, AudioDeviceEvent e)
+        {
+            _device = e.DeviceNumber;
+            _bufferLength = e.BufferLength;
+            if (_recordEndPoint != null) _recordEndPoint.Reinitialize(e.DeviceNumber,e.BufferLength);
+        }
+
 
         public void Dispose()
         {
             if (_alive)
                 CloseConnections();
             if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
-            if (_recordEndPoint != null) _recordEndPoint.Dispose();
             if (_socketServer != null) _socketServer.Close();
         }
 
@@ -75,16 +91,14 @@ namespace VoiceChatWPF.Models
                 _socketClient.EndConnect(result);
 
                 _recordEndPoint = new RecordEndPoint(_socketClient);
-
-
+                AudioTimer.Start();
                 BeginRecording();
-                _alive = true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 _socketClient.Close();
                 //Disable Disconnect Button and Enable Connect Button
-                if (ButtonEvent != null) ButtonEvent(this, new CustomEventArgs(true, false));
+                if (ButtonEvent != null) ButtonEvent(this, new ButtonHandlerEvent(true, false));
             }
         }
 
@@ -94,6 +108,7 @@ namespace VoiceChatWPF.Models
         private void BeginPlayback()
         {
             //Make a TCP client which is disposed when the method ends
+
             using (Socket client = _socketServer.Accept())
                 _playbackEndpoint.PlaybackLoop(client);
         }
@@ -103,7 +118,7 @@ namespace VoiceChatWPF.Models
         /// </summary>
         private void BeginRecording()
         {
-            _recordEndPoint.Recording(true, false);
+            _recordEndPoint.Reinitialize(_device,_bufferLength);
         }
 
         /// <summary>
@@ -117,10 +132,10 @@ namespace VoiceChatWPF.Models
 
             if (_recordEndPoint != null)
             {
-                //Stop Recording SendStream
+                //Stop Recording SendStream and  WasapiLoopBack
                 _recordEndPoint.Recording(false);
-                //Stop Recording WasapiLoopBack
-                _recordEndPoint.Recording(true, true);
+                _recordEndPoint.Dispose();
+                _recordEndPoint = null;
             }
 
             if (_playbackEndpoint != null) _playbackEndpoint.Dispose();
@@ -133,7 +148,7 @@ namespace VoiceChatWPF.Models
 
 
             //Disable Disconnect Button and Enable Connect Button
-            if (ButtonEvent != null) ButtonEvent(this, new CustomEventArgs(true, false));
+            if (ButtonEvent != null) ButtonEvent(this, new ButtonHandlerEvent(true, false));
         }
     }
 }

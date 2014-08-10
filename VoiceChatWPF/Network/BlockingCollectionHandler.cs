@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using NAudio.Wave;
 
 namespace VoiceChatWPF.Network
 {
@@ -23,6 +24,7 @@ namespace VoiceChatWPF.Network
         {
             if (_dataCollectTask != null)
             {
+                BufferCollection.Add(new byte[0]);
                 _dataCollectTask.Wait();
                 _dataCollectTask.Dispose();
             }
@@ -33,7 +35,7 @@ namespace VoiceChatWPF.Network
         {
             try
             {
-                //using (var waveWriterYour = new WaveFileWriter(@"F:\Desktop\\Recordshit\\" + Environment.UserName + " - " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss-fff") + ".wav", new WaveFormat(48000, 16, 2)))
+                using (var waveWriterYour = new WaveFileWriter(@"F:\Desktop\\Recordshit\\" + Environment.UserName + " - " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss-fff") + ".wav", new WaveFormat(48000, 16, 2)))
                 while (true)
                 {
                     byte[] bufBytes;
@@ -42,8 +44,8 @@ namespace VoiceChatWPF.Network
                         if (bufBytes.Length == 0 || !_socketClient.Connected)
                             break;
                         _socketClient.Send(bufBytes);
-                        //waveWriterYour.Write(bufBytes, 0, bufBytes.Length);
-                        //waveWriterYour.Flush();
+                        waveWriterYour.Write(bufBytes, 0, bufBytes.Length);
+                        waveWriterYour.Flush();
                     }
                     else
                     {

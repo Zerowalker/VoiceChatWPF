@@ -1,6 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using NAudio.CoreAudioApi;
+﻿using NAudio.CoreAudioApi;
 using NAudio.Wave;
+using System.Collections.ObjectModel;
 
 namespace VoiceChatWPF.Commands
 {
@@ -21,7 +21,6 @@ namespace VoiceChatWPF.Commands
                 WaveInCapabilities deviceInfo = WaveIn.GetCapabilities(waveInDevice);
                 audioDevices.Add(deviceInfo.ProductName);
             }
-
 
             audioDevices.Add("Wasapi Loopback");
             return audioDevices;
